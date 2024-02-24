@@ -26,7 +26,6 @@ class MNISTDataModule(pl.LightningDataModule):
             [
                 transforms.Resize((32, 32)),
                 transforms.ToTensor(),
-                transforms.Normalize(mean=(0.5), std=(0.5))
             ]
         )
         self.loader = partial(
