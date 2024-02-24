@@ -83,7 +83,11 @@ class LatentDiffusionModel(pl.LightningModule):
             with torch.no_grad():
                 wandblog = self.logger.experiment
                 n = min(self.trainer.val_dataloaders.batch_size, 16)
-                x_org = next(iter(self.trainer.val_dataloaders))[0][:n].to(self.vae.device)
+                batch = next(iter(self.trainer.val_dataloaders))
+                if isinstance(batch, (list, tuple)):
+                    x_org = batch[0][:n].to(self.vae.device)
+                else:
+                    x_org = batch[:n].to(self.vae.device)
                 x_res, _ = self.vae(x_org)
                 org_array = [x_org[i] for i in range(x_org.shape[0])]
                 res_array = [x_res[i] for i in range(x_res.shape[0])]
