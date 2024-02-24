@@ -160,3 +160,5 @@ cython_debug/
 #.idea/
 *.ipynb
 .DS_Store
+celeba_hq_256
+lightning_logs

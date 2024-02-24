@@ -51,7 +51,7 @@ class CelebADataModule(pl.LightningDataModule):
 
     def setup(self, stage: str):
         if stage == "fit":
-            dataset = CelebADataset(self.data_dir, self.img_dim)
+            dataset = CelebADataset(self.data_dir)
             self.CelebA_train, self.CelebA_val, _ = random_split(
                 dataset=dataset,
                 lengths=[self.train_ratio, 0.01, 1 - 0.01 - self.train_ratio],

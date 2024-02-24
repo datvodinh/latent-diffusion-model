@@ -2,7 +2,7 @@ from argparse import Namespace
 from dataclasses import dataclass
 
 
-def get_config(stage: str, args: Namespace):
+def get_config(stage: str, args: Namespace = None):
     if stage == "stage1":
         return LDMConfigStage1
     else:
@@ -18,6 +18,9 @@ class LDMConfigStage1:
     weight_decay: float = 0.001
     betas: tuple[float] = (0.9, 0.999)
     pct_start: float = 0.1
+
+    # MODEL
+    in_channels: int = 3
 
 
 @dataclass

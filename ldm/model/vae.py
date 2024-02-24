@@ -68,11 +68,12 @@ class VAEEncoder(nn.Module):
             nn.Conv2d(512, 8, kernel_size=3, padding=1),
         )
 
-    def forward(self, x, noise):
+    def forward(self, x):
         out = self.encoder(x)
         mean, log_var = out.chunk(2, dim=1)
         log_var = log_var.clamp(-20, 20)
         std = log_var.exp().sqrt()
+        noise = torch.rand_like(std, device=std.device)
         x_enc = mean + std * noise
         return x_enc * self.scale
 
@@ -122,7 +123,10 @@ class VariationalAutoEncoder(pl.LightningModule):
     def decode(self, x):
         return self.decoder(x)
 
-    def forward(self, x: torch.Tensor):
+    def forward(
+        self,
+        x: torch.Tensor
+    ):
         return self.decode(self.encode(x))
 
 

@@ -20,7 +20,7 @@ def get_training_parser():
         help='max epoch'
     )
     parser.add_argument(
-        '--batch_size', '-bs', type=int, default=32,
+        '--batch_size', '-bs', type=int, default=1,
         help='batch size'
     )
     parser.add_argument(
