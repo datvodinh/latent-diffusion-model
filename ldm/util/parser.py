@@ -8,7 +8,7 @@ def get_training_parser():
         help='model name'
     )
     parser.add_argument(
-        '--stage', '-s', type=str, default='stage2',
+        '--stage', '-st', type=str, default='stage2',
         help='training state for LDM'
     )
     parser.add_argument(
