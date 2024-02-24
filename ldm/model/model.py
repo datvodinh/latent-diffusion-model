@@ -80,14 +80,6 @@ class LatentDiffusionModel(pl.LightningModule):
 
     def on_train_epoch_end(self) -> None:
         if self.config.stage == "stage1":
-            self.log_dict(
-                {
-                    "train_loss": sum(self.train_loss) / len(self.train_loss)
-                },
-                sync_dist=True
-            )
-            self.train_loss.clear()
-
             if self.spe > 0:
                 if self.epoch_count % self.spe == 0:
                     wandblog = self.logger.experiment
