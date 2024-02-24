@@ -80,24 +80,25 @@ class LatentDiffusionModel(pl.LightningModule):
 
     def on_train_epoch_end(self) -> None:
         if self.config.stage == "stage1":
-            wandblog = self.logger.experiment
-            x_org = next(iter(self.trainer.val_dataloaders))[0][:4].to(self.vae.device)
-            x_res, _ = self.vae(x_org)
-            org_array = [x_org[i] for i in range(x_org.shape[0])]
-            res_array = [x_res[i] for i in range(x_res.shape[0])]
+            with torch.no_grad():
+                wandblog = self.logger.experiment
+                x_org = next(iter(self.trainer.val_dataloaders))[0][:4].to(self.vae.device)
+                x_res, _ = self.vae(x_org)
+                org_array = [x_org[i] for i in range(x_org.shape[0])]
+                res_array = [x_res[i] for i in range(x_res.shape[0])]
 
-            wandblog.log(
-                {
-                    "original": wandb.Image(
-                        make_grid(org_array, nrow=4, normalize=True).permute(1, 2, 0).cpu().numpy(),
-                        caption="Original Image!"
-                    ),
-                    "reconstructed": wandb.Image(
-                        make_grid(res_array, nrow=4, normalize=True).permute(1, 2, 0).cpu().numpy(),
-                        caption="Sampled Image!"
-                    )
-                }
-            )
+                wandblog.log(
+                    {
+                        "original": wandb.Image(
+                            make_grid(org_array, nrow=4, normalize=True).permute(1, 2, 0).cpu().numpy(),
+                            caption="Original Image!"
+                        ),
+                        "reconstructed": wandb.Image(
+                            make_grid(res_array, nrow=4, normalize=True).permute(1, 2, 0).cpu().numpy(),
+                            caption="Sampled Image!"
+                        )
+                    }
+                )
 
         self.epoch_count += 1
 
