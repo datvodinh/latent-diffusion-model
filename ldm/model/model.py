@@ -82,7 +82,8 @@ class LatentDiffusionModel(pl.LightningModule):
         if self.config.stage == "stage1":
             with torch.no_grad():
                 wandblog = self.logger.experiment
-                x_org = next(iter(self.trainer.val_dataloaders))[0][:4].to(self.vae.device)
+                n = min(self.trainer.val_dataloaders.batch_size, 16)
+                x_org = next(iter(self.trainer.val_dataloaders))[0][:n].to(self.vae.device)
                 x_res, _ = self.vae(x_org)
                 org_array = [x_org[i] for i in range(x_org.shape[0])]
                 res_array = [x_res[i] for i in range(x_res.shape[0])]
