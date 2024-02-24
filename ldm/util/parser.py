@@ -8,6 +8,10 @@ def get_training_parser():
         help='model name'
     )
     parser.add_argument(
+        '--dataset', '-ds', type=str, default='mnist',
+        help='model name'
+    )
+    parser.add_argument(
         '--stage', '-st', type=str, default='stage2',
         help='training state for LDM'
     )

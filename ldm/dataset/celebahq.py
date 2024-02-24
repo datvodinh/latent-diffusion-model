@@ -35,6 +35,7 @@ class CelebADataModule(pl.LightningDataModule):
         train_ratio: float = 0.99,
     ):
         super().__init__()
+        self.in_channels = 3
         self.data_dir = data_dir
         self.batch_size = batch_size
         self.num_workers = num_workers

@@ -17,7 +17,8 @@ def main():
     pl.seed_everything(args.seed, workers=True)
 
     # DATAMODULE
-    datamodule = ldm.CelebADataModule(
+    datamodule = ldm.get_datamodule(
+        dataset=args.dataset,
         data_dir=args.data_dir,
         batch_size=args.batch_size,
         num_workers=args.num_workers,
@@ -35,6 +36,7 @@ def main():
 
     # MODEL
     config = ldm.get_config(stage=args.stage)
+    config.in_channels = datamodule.in_channels
     model = ldm.LatentDiffusionModel(config)
     if args.stage == "stage2":
         model.load_vae_ckpt(args.vae_ckpt)
