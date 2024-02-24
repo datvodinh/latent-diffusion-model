@@ -1,7 +1,9 @@
 import ldm
+import wandb
 import torch
 import torch.nn as nn
 import pytorch_lightning as pl
+from torchvision.utils import make_grid
 from torch.optim.lr_scheduler import OneCycleLR
 
 
@@ -73,6 +75,39 @@ class LatentDiffusionModel(pl.LightningModule):
         else:
             loss = self._step_stage_2(batch)
             self.log_dict({"unet_loss_val": loss}, sync_dist=True, on_epoch=True)
+
+    def on_train_epoch_end(self) -> None:
+        if self.config.stage == "stage1":
+            self.log_dict(
+                {
+                    "train_loss": sum(self.train_loss) / len(self.train_loss)
+                },
+                sync_dist=True
+            )
+            self.train_loss.clear()
+
+            if self.spe > 0:
+                if self.epoch_count % self.spe == 0:
+                    wandblog = self.logger.experiment
+                    x_org = next(iter(self.trainer.val_dataloaders))[0][:4]
+                    x_res, _ = self.vae(x_org)
+                    org_array = [x_org[i] for i in range(x_org.shape[0])]
+                    res_array = [x_res[i] for i in range(x_res.shape[0])]
+
+                    wandblog.log(
+                        {
+                            "original": wandb.Image(
+                                make_grid(org_array, nrow=4, normalize=True).permute(1, 2, 0).cpu().numpy(),
+                                caption="Original Image!"
+                            ),
+                            "reconstructed": wandb.Image(
+                                make_grid(res_array, nrow=4, normalize=True).permute(1, 2, 0).cpu().numpy(),
+                                caption="Sampled Image!"
+                            )
+                        }
+                    )
+
+        self.epoch_count += 1
 
     def configure_optimizers(self):
         optimizer = torch.optim.AdamW(
