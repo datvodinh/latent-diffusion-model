@@ -28,6 +28,8 @@ class LatentDiffusionModel(pl.LightningModule):
                 context_dim=config.context_dim
             )
 
+        self.epoch_count = 0
+
     def load_vae_ckpt(self, ckpt_path: str):
         self.vae = ldm.VariationalAutoEncoder.load_from_checkpoint(
             checkpoint_path=ckpt_path, map_location=self.device
