@@ -12,6 +12,10 @@ def get_training_parser():
         help='training state for LDM'
     )
     parser.add_argument(
+        '--vae_ckpt', '-vc', type=str, default='stage2',
+        help='checkpoint for pretrained VAE model'
+    )
+    parser.add_argument(
         '--max_epochs', '-me', type=int, default=200,
         help='max epoch'
     )

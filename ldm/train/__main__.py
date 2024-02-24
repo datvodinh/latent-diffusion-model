@@ -36,6 +36,8 @@ def main():
     # MODEL
     config = ldm.get_config(stage=args.stage)
     model = ldm.LatentDiffusionModel(config)
+    if args.stage == "stage2":
+        model.load_vae_ckpt(args.vae_ckpt)
 
     # CALLBACK
     root_path = os.path.join(os.getcwd(), "checkpoints")
