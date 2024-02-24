@@ -81,7 +81,7 @@ class LatentDiffusionModel(pl.LightningModule):
     def on_train_epoch_end(self) -> None:
         if self.config.stage == "stage1":
             wandblog = self.logger.experiment
-            x_org = next(iter(self.trainer.val_dataloaders))[0][:4]
+            x_org = next(iter(self.trainer.val_dataloaders))[0][:4].to(self.device)
             x_res, _ = self.vae(x_org)
             org_array = [x_org[i] for i in range(x_org.shape[0])]
             res_array = [x_res[i] for i in range(x_res.shape[0])]
