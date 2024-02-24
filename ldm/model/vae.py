@@ -2,22 +2,42 @@ import torch
 import torch.nn as nn
 import pytorch_lightning as pl
 import ldm
+import torch.nn.functional as F
+from einops import rearrange, repeat
 
 
-class VAEAttentionBlock(nn.Module):
+class VectorQuantizer(nn.Module):
     def __init__(
-        self,
-        channels: int,
-        num_heads: int = 4
+            self,
+            num_embeds: int,
+            embed_dim: int,
+            beta: float = 0.25
+
     ):
         super().__init__()
-        self.attention = nn.Sequential(
-            nn.GroupNorm(32, channels),
-            ldm.SelfAttention(channels=channels, num_heads=num_heads)
-        )
+        self.num_embeds = num_embeds
+        self.embed_dim = embed_dim
+        self.beta = beta
 
-    def forward(self, x: torch.Tensor):
-        return x + self.attention(x)
+        self.embedding = nn.Embedding(num_embeds, embed_dim)
+        self.embedding.weight.data.uniform_(-1/num_embeds, 1/num_embeds)
+
+    def forward(self, x_latent: torch.Tensor):
+        B, C, H, W = x_latent.shape
+        x_latent_flat = rearrange(x_latent, "b c h w -> b (h w) c").contiguous()
+        expand_embed = repeat(self.embedding.weight, "e d -> b e d", b=B)
+        dist = torch.cdist(x_latent_flat, expand_embed, p=2.)**2  # [B,HW,E]
+        encoding_inds = torch.argmin(dist, dim=-1)  # [B,HW]
+        quantized_latents = F.embedding(encoding_inds, self.embedding.weight)
+        quantized_latents = rearrange(
+            quantized_latents, "b (h w) d -> b d h w", b=B, h=H, w=W  # [B,D,H,W]
+        ).contiguous()
+        # Compute the VQ Losses
+        commitment_loss = F.mse_loss(quantized_latents.detach(), x_latent)
+        embedding_loss = F.mse_loss(quantized_latents, x_latent.detach())
+        vq_loss = commitment_loss * self.beta + embedding_loss
+        quantized_latents = x_latent + (quantized_latents - x_latent).detach()
+        return quantized_latents, vq_loss  # [B,D,H,W]
 
 
 class VAEResidualBlock(nn.Module):
@@ -47,6 +67,7 @@ class VAEEncoder(nn.Module):
     def __init__(
         self,
         in_channels: int = 3,
+        latent_dim: int = 8,
         scale_factor: float = 0.18215
     ):
         super().__init__()
@@ -57,15 +78,12 @@ class VAEEncoder(nn.Module):
             nn.Conv2d(128, 128, kernel_size=3, stride=2, padding=1),
             VAEResidualBlock(128, 256),
             nn.Conv2d(256, 256, kernel_size=3, stride=2, padding=1),
-            VAEAttentionBlock(channels=256),
             VAEResidualBlock(256, 512),
             nn.Conv2d(512, 512, kernel_size=3, stride=2, padding=1),
             VAEResidualBlock(512, 512),
-            VAEAttentionBlock(channels=512),
-            VAEResidualBlock(512, 512),
             nn.GroupNorm(32, 512),
             nn.SiLU(),
-            nn.Conv2d(512, 8, kernel_size=3, padding=1),
+            nn.Conv2d(512, latent_dim, kernel_size=3, padding=1),
         )
 
     def forward(self, x):
@@ -82,28 +100,26 @@ class VAEDecoder(nn.Module):
     def __init__(
         self,
         out_channels: int = 3,
+        latent_dim: int = 8,
         scale_factor: float = 0.18215
     ):
         super().__init__()
         self.scale = scale_factor
         self.decoder = nn.Sequential(
-            nn.Conv2d(4, 512, kernel_size=3, padding=1),
-            VAEResidualBlock(512, 512),
-            VAEAttentionBlock(512),
+            nn.Conv2d(latent_dim // 2, 512, kernel_size=3, padding=1),
             VAEResidualBlock(512, 512),
             nn.Upsample(scale_factor=2),
             nn.Conv2d(512, 512, kernel_size=3, padding=1),
             VAEResidualBlock(512, 256),
-            VAEAttentionBlock(256),
             nn.Upsample(scale_factor=2),
             nn.Conv2d(256, 256, kernel_size=3, padding=1),
             VAEResidualBlock(256, 128),
             nn.Upsample(scale_factor=2),
             nn.Conv2d(128, 128, kernel_size=3, padding=1),
-            VAEResidualBlock(128, 128),
-            nn.GroupNorm(32, 128),
+            VAEResidualBlock(128, 64),
+            nn.GroupNorm(32, 64),
             nn.SiLU(),
-            nn.Conv2d(128, out_channels, kernel_size=3, padding=1)
+            nn.Conv2d(64, out_channels, kernel_size=3, padding=1)
         )
 
     def forward(self, x):
@@ -112,27 +128,26 @@ class VAEDecoder(nn.Module):
 
 
 class VariationalAutoEncoder(pl.LightningModule):
-    def __init__(self, in_channels: int):
+    def __init__(self,
+                 in_channels: int = 3,
+                 latent_dim: int = 8,
+                 num_embeds: int = 256,
+                 ):
         super().__init__()
-        self.encoder = VAEEncoder(in_channels)
-        self.decoder = VAEDecoder(in_channels)
-
-    def encode(self, x):
-        return self.encoder(x)
-
-    def decode(self, x):
-        return self.decoder(x)
+        self.encoder = VAEEncoder(in_channels, latent_dim)
+        self.vec_quant = VectorQuantizer(num_embeds=num_embeds, embed_dim=latent_dim//2)
+        self.decoder = VAEDecoder(in_channels, latent_dim)
 
     def forward(
         self,
         x: torch.Tensor
     ):
-        return self.decode(self.encode(x))
+        x_latent = self.encoder(x)
+        x_quant, vq_loss = self.vec_quant(x_latent)
+        return self.decoder(x_quant), vq_loss
 
 
 if __name__ == "__main__":
-    encoder = VAEEncoder()
-    decoder = VAEDecoder()
+    model = VariationalAutoEncoder()
     x = torch.randn(2, 3, 256, 256)
-    noise = torch.randn(2, 4, 32, 32)
-    print(decoder(encoder(x, noise)).shape)
+    print(model(x)[0].shape)

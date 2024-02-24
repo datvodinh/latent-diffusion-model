@@ -33,16 +33,16 @@ class LatentDiffusionModel(pl.LightningModule):
         self.vae.requires_grad_(False)
 
     def _step_stage_1(self, batch):
-        if isinstance(batch, tuple):
+        if isinstance(batch, (tuple, list)):
             x = batch[0]
         else:
             x = batch
-        output = self.vae(x)
-        loss = self.criterion(x, output)
+        output, vq_loss = self.vae(x)
+        loss = self.criterion(x, output) + vq_loss
         return loss
 
     def _step_stage_2(self, batch):
-        if isinstance(batch, tuple):
+        if isinstance(batch, (tuple, list)):
             x = batch[0]
         else:
             x = batch
@@ -51,7 +51,7 @@ class LatentDiffusionModel(pl.LightningModule):
             low=0, high=self.max_timesteps, size=(n//2+1,), device=x.device
         )
         t = torch.cat([t, self.max_timesteps - t - 1], dim=0)[:n]
-        x_latent = self.vae(x)
+        x_latent = self.vae.encode(x)
         x_noise, noise = self.noising(x_latent, t)
         noise_pred = self.model(x_noise, t)
         loss = self.criterion(noise, noise_pred)
