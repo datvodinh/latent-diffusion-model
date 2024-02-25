@@ -16,7 +16,11 @@ class LatentDiffusionModel(pl.LightningModule):
         self.save_hyperparameters()
         self.config = config
         if config.stage == "stage1":
-            self.vae = ldm.VariationalAutoEncoder(in_channels=config.in_channels)
+            self.vae = ldm.VariationalAutoEncoder(
+                in_channels=config.in_channels,
+                latent_dim=config.latent_dim,
+                num_embeds=config.num_embeds
+            )
             self.criterion = nn.MSELoss()
 
         elif config.stage == "stage2":
@@ -78,6 +82,12 @@ class LatentDiffusionModel(pl.LightningModule):
             loss = self._step_stage_2(batch)
             self.log_dict({"unet_loss_val": loss}, sync_dist=True, on_epoch=True)
 
+    def _wandb_image(self, x: torch.Tensor, caption: str):
+        return wandb.Image(
+            make_grid(x, nrow=4, normalize=True).permute(1, 2, 0).cpu().numpy(),
+            caption="Original Image!"
+        )
+
     def on_train_epoch_end(self) -> None:
         if self.config.stage == "stage1":
             with torch.no_grad():
@@ -94,16 +104,13 @@ class LatentDiffusionModel(pl.LightningModule):
 
                 wandblog.log(
                     {
-                        "original": wandb.Image(
-                            make_grid(org_array, nrow=4, normalize=True).permute(1, 2, 0).cpu().numpy(),
-                            caption="Original Image!"
-                        ),
-                        "reconstructed": wandb.Image(
-                            make_grid(res_array, nrow=4, normalize=True).permute(1, 2, 0).cpu().numpy(),
-                            caption="Sampled Image!"
-                        )
+                        "original": self._wandb_image(org_array, caption="Original Image!"),
+                        "reconstructed": self._wandb_image(res_array, caption="Sampled Image!")
                     }
                 )
+        else:
+            with torch.no_grad():
+                pass
 
         self.epoch_count += 1
 
@@ -115,10 +122,14 @@ class LatentDiffusionModel(pl.LightningModule):
             betas=self.config.betas,
 
         )
-        scheduler = OneCycleLR(
-            optimizer=optimizer,
-            max_lr=self.config.lr,
-            total_steps=self.trainer.estimated_stepping_batches,
-            pct_start=self.config.pct_start
-        )
+        scheduler = {
+            'scheduler': OneCycleLR(
+                optimizer=optimizer,
+                max_lr=self.config.lr,
+                total_steps=self.trainer.estimated_stepping_batches,
+                pct_start=self.config.pct_start
+            ),
+            'interval': 'step',
+            'frequency': 1
+        }
         return [optimizer], [scheduler]

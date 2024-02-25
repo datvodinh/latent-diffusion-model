@@ -32,14 +32,16 @@ class CelebADataModule(pl.LightningDataModule):
         batch_size: int = 32,
         num_workers: int = 0,
         seed: int = 42,
-        train_ratio: float = 0.99,
+        train_ratio: float = 0.95,
+        val_ratio: float = 0.05
     ):
         super().__init__()
         self.in_channels = 3
         self.data_dir = data_dir
         self.batch_size = batch_size
         self.num_workers = num_workers
-        self.train_ratio = min(train_ratio, 0.99)
+        self.train_ratio = min(train_ratio, 0.95)
+        self.val_ratio = val_ratio
         self.seed = seed
 
         self.loader = partial(
@@ -55,7 +57,7 @@ class CelebADataModule(pl.LightningDataModule):
             dataset = CelebADataset(self.data_dir)
             self.CelebA_train, self.CelebA_val, _ = random_split(
                 dataset=dataset,
-                lengths=[self.train_ratio, 0.01, 1 - 0.01 - self.train_ratio],
+                lengths=[self.train_ratio, self.val_ratio, max(1 - self.train_ratio - self.val_ratio, 0)],
                 generator=torch.Generator().manual_seed(self.seed)
             )
         else:

@@ -16,11 +16,13 @@ class LDMConfigStage1:
     # LR
     lr: float = 1e-4
     weight_decay: float = 0.001
-    betas: tuple[float] = (0.9, 0.999)
+    betas: tuple[float] = (0.5, 0.9)
     pct_start: float = 0.1
 
     # MODEL
     in_channels: int = 3
+    latent_dim: int = 8
+    num_embeds: int = 1024
 
 
 @dataclass

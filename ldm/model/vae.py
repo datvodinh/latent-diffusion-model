@@ -1,7 +1,6 @@
 import torch
 import torch.nn as nn
 import pytorch_lightning as pl
-import ldm
 import torch.nn.functional as F
 from einops import rearrange, repeat
 
@@ -18,7 +17,6 @@ class VectorQuantizer(nn.Module):
         self.num_embeds = num_embeds
         self.embed_dim = embed_dim
         self.beta = beta
-
         self.embedding = nn.Embedding(num_embeds, embed_dim)
         self.embedding.weight.data.uniform_(-1/num_embeds, 1/num_embeds)
 
@@ -28,16 +26,13 @@ class VectorQuantizer(nn.Module):
         expand_embed = repeat(self.embedding.weight, "e d -> b e d", b=B)
         dist = torch.cdist(x_latent_flat, expand_embed, p=2.)**2  # [B,HW,E]
         encoding_inds = torch.argmin(dist, dim=-1)  # [B,HW]
-        quantized_latents = F.embedding(encoding_inds, self.embedding.weight)
-        quantized_latents = rearrange(
-            quantized_latents, "b (h w) d -> b d h w", b=B, h=H, w=W  # [B,D,H,W]
+        x_q = F.embedding(encoding_inds, self.embedding.weight)
+        x_q = rearrange(
+            x_q, "b (h w) d -> b d h w", b=B, h=H, w=W  # [B,D,H,W]
         ).contiguous()
-        # Compute the VQ Losses
-        commitment_loss = F.mse_loss(quantized_latents.detach(), x_latent)
-        embedding_loss = F.mse_loss(quantized_latents, x_latent.detach())
-        vq_loss = commitment_loss * self.beta + embedding_loss
-        quantized_latents = x_latent + (quantized_latents - x_latent).detach()
-        return quantized_latents, vq_loss  # [B,D,H,W]
+        vq_loss = (x_q.detach() - x_latent)**2 * self.beta + (x_q - x_latent.detach())**2
+        x_q = x_latent + (x_q - x_latent).detach()
+        return x_q, vq_loss.mean()  # [B,D,H,W]
 
 
 class VAEResidualBlock(nn.Module):
@@ -67,11 +62,9 @@ class VAEEncoder(nn.Module):
     def __init__(
         self,
         in_channels: int = 3,
-        latent_dim: int = 8,
-        scale_factor: float = 0.18215
+        latent_dim: int = 8
     ):
         super().__init__()
-        self.scale = scale_factor
         self.encoder = nn.Sequential(
             nn.Conv2d(in_channels, 64, kernel_size=3, padding=1),
             VAEResidualBlock(64, 128),
@@ -87,26 +80,18 @@ class VAEEncoder(nn.Module):
         )
 
     def forward(self, x):
-        out = self.encoder(x)
-        mean, log_var = out.chunk(2, dim=1)
-        log_var = log_var.clamp(-20, 20)
-        std = log_var.exp().sqrt()
-        noise = torch.rand_like(std, device=std.device)
-        x_enc = mean + std * noise
-        return x_enc * self.scale
+        return self.encoder(x)
 
 
 class VAEDecoder(nn.Module):
     def __init__(
         self,
         out_channels: int = 3,
-        latent_dim: int = 8,
-        scale_factor: float = 0.18215
+        latent_dim: int = 8
     ):
         super().__init__()
-        self.scale = scale_factor
         self.decoder = nn.Sequential(
-            nn.Conv2d(latent_dim // 2, 512, kernel_size=3, padding=1),
+            nn.Conv2d(latent_dim, 512, kernel_size=3, padding=1),
             VAEResidualBlock(512, 512),
             nn.Upsample(scale_factor=2),
             nn.Conv2d(512, 512, kernel_size=3, padding=1),
@@ -123,7 +108,6 @@ class VAEDecoder(nn.Module):
         )
 
     def forward(self, x):
-        x /= self.scale
         return self.decoder(x)
 
 
@@ -135,7 +119,9 @@ class VariationalAutoEncoder(pl.LightningModule):
                  ):
         super().__init__()
         self.encoder = VAEEncoder(in_channels, latent_dim)
-        self.vec_quant = VectorQuantizer(num_embeds=num_embeds, embed_dim=latent_dim//2)
+        self.quant_conv_in = nn.Conv2d(latent_dim, latent_dim, 1)
+        self.vec_quant = VectorQuantizer(num_embeds=num_embeds, embed_dim=latent_dim)
+        self.quant_conv_out = nn.Conv2d(latent_dim, latent_dim, 1)
         self.decoder = VAEDecoder(in_channels, latent_dim)
 
     def forward(
@@ -143,7 +129,9 @@ class VariationalAutoEncoder(pl.LightningModule):
         x: torch.Tensor
     ):
         x_latent = self.encoder(x)
+        x_latent = self.quant_conv_in(x_latent)
         x_quant, vq_loss = self.vec_quant(x_latent)
+        x_quant = self.quant_conv_out(x_quant)
         return self.decoder(x_quant), vq_loss
 
 

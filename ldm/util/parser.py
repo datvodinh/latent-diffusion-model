@@ -28,7 +28,11 @@ def get_training_parser():
         help='batch size'
     )
     parser.add_argument(
-        '--train_ratio', '-tr', type=float, default=0.99,
+        '--train_ratio', '-tr', type=float, default=0.95,
+        help='batch size'
+    )
+    parser.add_argument(
+        '--val_ratio', '-vr', type=float, default=0.05,
         help='batch size'
     )
     parser.add_argument(

@@ -42,11 +42,10 @@ def main():
         model.load_vae_ckpt(args.vae_ckpt)
 
     # CALLBACK
-    ckpt_monitor = "vae_loss_val" if (args.stage == "stage1") else "unet_loss_val"
     root_path = os.path.join(os.getcwd(), "checkpoints")
     callback = ldm.ModelCallback(
         root_path=root_path,
-        ckpt_monitor=ckpt_monitor
+        stage=args.stage
     )
 
     # TRAINER
