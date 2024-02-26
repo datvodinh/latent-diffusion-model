@@ -20,16 +20,20 @@ class VectorQuantizer(nn.Module):
         self.embedding = nn.Embedding(num_embeds, embed_dim)
         self.embedding.weight.data.uniform_(-1/num_embeds, 1/num_embeds)
 
-    def forward(self, x_latent: torch.Tensor):
+    def quantize(self, x_latent: torch.Tensor):
         B, C, H, W = x_latent.shape
         x_latent_flat = rearrange(x_latent, "b c h w -> b (h w) c").contiguous()
-        expand_embed = repeat(self.embedding.weight, "e d -> b e d", b=B)
+        expand_embed = repeat(self.embedding.weight, "e d -> b e d", b=x_latent.shape[0])
         dist = torch.cdist(x_latent_flat, expand_embed, p=2.)**2  # [B,HW,E]
         encoding_inds = torch.argmin(dist, dim=-1)  # [B,HW]
         x_q = F.embedding(encoding_inds, self.embedding.weight)
         x_q = rearrange(
             x_q, "b (h w) d -> b d h w", b=B, h=H, w=W  # [B,D,H,W]
         ).contiguous()
+        return x_q
+
+    def forward(self, x_latent: torch.Tensor):
+        x_q = self.quantize(x_latent)
         vq_loss = (x_q.detach() - x_latent)**2 * self.beta + (x_q - x_latent.detach())**2
         x_q = x_latent + (x_q - x_latent).detach()
         return x_q, vq_loss.mean()  # [B,D,H,W]

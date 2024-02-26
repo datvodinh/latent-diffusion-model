@@ -77,7 +77,6 @@ class DDPMScheduler:
     ):
         if labels is not None:
             n_samples = labels.shape[0]
-        model.eval()
         x_t = torch.randn(
             n_samples, in_channels, dim, dim, device=model.device
         )
@@ -86,9 +85,7 @@ class DDPMScheduler:
         for t in all_timesteps:
             x_t = self.sampling_t(x_t=x_t, model=model, labels=labels, t=t, timesteps=timesteps,
                                   n_samples=n_samples, cfg_scale=cfg_scale)
-        model.train()
-        x_t = (x_t.clamp(-1, 1) + 1) / 2 * 255.  # range [0,255]
-        return x_t.type(torch.uint8)
+        return x_t
 
     @torch.no_grad()
     def sampling_demo(
@@ -114,7 +111,7 @@ class DDPMScheduler:
         for t in all_timesteps:
             x_t = self.sampling_t(x_t=x_t, model=model, labels=labels, t=t, timesteps=timesteps,
                                   n_samples=n_samples, cfg_scale=cfg_scale)
-            yield ((x_t.clamp(-1, 1) + 1) / 2 * 255).type(torch.uint8)
+            yield x_t
 
 
 class DDIMScheduler(DDPMScheduler):

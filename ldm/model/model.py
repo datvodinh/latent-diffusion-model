@@ -182,7 +182,9 @@ class LatentDiffusionModel(pl.LightningModule):
                         wandblog = self.logger.experiment
                         n = min(self.trainer.val_dataloaders.batch_size, 16)
                         x_t = self.sampling(mode="ddim", n_samples=n, timesteps=100, demo=False)
-                        img_array = [x_t[i] for i in range(x_t.shape[0])]
+                        x_t = self.vae.vec_quant.quantize(x_t)
+                        x_dec = self.vae.decode(x_t)
+                        img_array = [x_dec[i] for i in range(x_dec.shape[0])]
 
                         wandblog.log(
                             {
