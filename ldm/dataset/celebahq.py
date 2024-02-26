@@ -1,28 +1,43 @@
 import pytorch_lightning as pl
 import torch
+import cv2
 import os
+import random
+import numpy as np
+import albumentations as A
+from albumentations.pytorch.transforms import ToTensorV2
 from PIL import Image
-from torch.utils.data import DataLoader, Dataset, random_split
-from torchvision import transforms
+from torch.utils.data import DataLoader, Dataset
 from functools import partial
 
 
 class CelebADataset(Dataset):
-    def __init__(self, data_dir: str):
-        self.list_path = os.listdir(data_dir)
-        self.data_dir = data_dir
-        self.transform = transforms.Compose(
-            [
-                transforms.ToTensor()
-            ]
-        )
+    def __init__(self, list_path: str, stage: str = "train"):
+        self.list_path = list_path
+        self.stage = stage
+        if stage == "train":
+            self.transform = A.Compose([
+                A.SmallestMaxSize(max_size=256, interpolation=cv2.INTER_AREA),
+                A.Normalize(mean=(0, 0, 0), std=(1, 1, 1)),
+                ToTensorV2()
+            ])
+        else:
+            self.transform = A.Compose([
+                A.Normalize(mean=(0, 0, 0), std=(1, 1, 1)),
+                ToTensorV2()
+            ])
 
     def __len__(self):
         return len(self.list_path)
 
     def __getitem__(self, index):
-        img = Image.open(os.path.join(self.data_dir, self.list_path[index]))
-        return self.transform(img)
+        img = Image.open(self.list_path[index])
+        img = np.asarray(img)
+        if self.stage == "train":
+            crop_len = int(256 * np.random.uniform(0.5, 1))
+            cropper = A.RandomCrop(height=crop_len, width=crop_len)
+            img = cropper(image=img)['image']
+        return self.transform(image=img)['image']
 
 
 class CelebADataModule(pl.LightningDataModule):
@@ -54,12 +69,17 @@ class CelebADataModule(pl.LightningDataModule):
 
     def setup(self, stage: str):
         if stage == "fit":
-            dataset = CelebADataset(self.data_dir)
-            self.CelebA_train, self.CelebA_val, _ = random_split(
-                dataset=dataset,
-                lengths=[self.train_ratio, self.val_ratio, max(1 - self.train_ratio - self.val_ratio, 0)],
-                generator=torch.Generator().manual_seed(self.seed)
-            )
+            list_dir = os.listdir(self.data_dir)
+            list_path = []
+            for d in list_dir:
+                list_path.append(os.path.join(self.data_dir, d))
+            random.shuffle(list_path)
+            len_train = int(len(list_path) * self.train_ratio)
+            len_val = int(len(list_path) * self.val_ratio)
+            train_list = list_path[:len_train]
+            val_list = list_path[len_train:min(len_train+len_val, len(list_path))]
+            self.CelebA_train = CelebADataset(list_path=train_list, stage="train")
+            self.CelebA_val = CelebADataset(list_path=val_list, stage="val")
         else:
             pass
 
