@@ -156,8 +156,10 @@ class DDIMScheduler(DDPMScheduler):
 
         sqrt_one_minus_alpha_hat = self.sqrt_one_minus_alpha_hat.to(model.device)[time][:, None, None, None]
         sqrt_alpha_hat = self.sqrt_alpha_hat.to(model.device)[time][:, None, None, None]
-        alpha_hat_prev = self.alpha_hat[time_prev] if time_prev[0] >= 0 else torch.ones_like(time_prev)
-        alpha_hat_prev = alpha_hat_prev.to(model.device)[:, None, None, None]
+        alpha_hat_prev = self.alpha_hat.to(model.device)[time_prev] if (
+            time_prev[0] >= 0
+        ) else torch.ones_like(time_prev, device=model.device)
+        alpha_hat_prev = alpha_hat_prev[:, None, None, None]
         sqrt_alpha_hat_prev = torch.sqrt(alpha_hat_prev)
         posterior_std = torch.sqrt(self.variance)[time][:, None, None, None] * eta
 
