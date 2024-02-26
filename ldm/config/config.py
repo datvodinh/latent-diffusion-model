@@ -45,8 +45,6 @@ class LDMConfigStage2:
     beta_1: float = 0.0001
     beta_2: float = 0.02
     mode: str = "ddim"
-    dim: int = 32
-    sample_per_epochs: int = 50
-    n_samples: int = 16
+    sample_per_epochs: int = 5
     time_dim: int = 256
     context_dim: int | None = None

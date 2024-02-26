@@ -173,7 +173,8 @@ class LatentDiffusionModel(pl.LightningModule):
                 if self.epoch_count % self.config.sample_per_epochs == 0:
                     with torch.no_grad():
                         wandblog = self.logger.experiment
-                        x_t = self.sampling(mode="ddim", n_samples=self.n_samples, timesteps=100, demo=False)
+                        n = min(self.trainer.val_dataloaders.batch_size, 16)
+                        x_t = self.sampling(mode="ddim", n_samples=n, timesteps=100, demo=False)
                         img_array = [x_t[i] for i in range(x_t.shape[0])]
 
                         wandblog.log(
