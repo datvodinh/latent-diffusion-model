@@ -46,7 +46,7 @@ class LatentDiffusionModel(pl.LightningModule):
                 )
             self.criterion = nn.MSELoss()
 
-        self.epoch_count = 0
+            self.epoch_count = 0
 
     def load_vae_ckpt(self, ckpt_path: str):
         state_dict = torch.load(ckpt_path, map_location=self.device)['state_dict']
@@ -169,14 +169,16 @@ class LatentDiffusionModel(pl.LightningModule):
                     }
                 )
         else:
-            with torch.no_grad():
-                wandblog = self.logger.experiment
-                x_t = self.sampling(mode="ddim", n_samples=self.n_samples, timesteps=100, demo=False)
-                img_array = [x_t[i] for i in range(x_t.shape[0])]
+            if self.config.sample_per_epochs > 0:
+                if self.epoch_count % self.config.sample_per_epochs == 0:
+                    with torch.no_grad():
+                        wandblog = self.logger.experiment
+                        x_t = self.sampling(mode="ddim", n_samples=self.n_samples, timesteps=100, demo=False)
+                        img_array = [x_t[i] for i in range(x_t.shape[0])]
 
-                wandblog.log(
-                    {
-                        "sample": self._wandb_image(img_array, caption="Sampled Image!")
-                    }
-                )
-        self.epoch_count += 1
+                        wandblog.log(
+                            {
+                                "sample": self._wandb_image(img_array, caption="Sampled Image!")
+                            }
+                        )
+            self.epoch_count += 1

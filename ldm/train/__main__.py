@@ -48,11 +48,15 @@ def main():
         stage=args.stage
     )
 
+    # STRATEGY
+    strategy = 'ddp_find_unused_parameters_true' if torch.cuda.is_available() else 'auto'
+
     # TRAINER
     trainer = pl.Trainer(
         default_root_dir=root_path,
         logger=logger,
         callbacks=callback.get_callback(),
+        strategy=strategy,
         gradient_clip_val=0.5,
         max_epochs=args.max_epochs,
         enable_progress_bar=args.pbar,
