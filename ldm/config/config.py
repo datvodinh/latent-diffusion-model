@@ -35,12 +35,16 @@ class LDMConfigStage2:
     betas: tuple[float] = (0.9, 0.999)
     pct_start: float = 0.1
 
+    # MODEL
+    in_channels: int = 3
+    latent_dim: int = 8
+    num_embeds: int = 1024
+
     # DIFFUSION
     max_timesteps: int = 1000
     beta_1: float = 0.0001
     beta_2: float = 0.02
-    in_channels: int = 3
-    mode: str = "ddpm"
+    mode: str = "ddim"
     dim: int = 32
     sample_per_epochs: int = 50
     n_samples: int = 16

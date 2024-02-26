@@ -124,15 +124,25 @@ class VariationalAutoEncoder(pl.LightningModule):
         self.quant_conv_out = nn.Conv2d(latent_dim, latent_dim, 1)
         self.decoder = VAEDecoder(in_channels, latent_dim)
 
-    def forward(
-        self,
-        x: torch.Tensor
-    ):
+    def encode(self, x: torch.Tensor):
         x_latent = self.encoder(x)
         x_latent = self.quant_conv_in(x_latent)
-        x_quant, vq_loss = self.vec_quant(x_latent)
+        return x_latent
+
+    def encode_quantize(self, x: torch.Tensor):
+        x_latent = self.encoder(x)
+        x_latent = self.quant_conv_in(x_latent)
+        x_quant, _ = self.vec_quant(x_latent)
+        return x_quant
+
+    def decode(self, x_quant: torch.Tensor):
         x_quant = self.quant_conv_out(x_quant)
-        return self.decoder(x_quant), vq_loss
+        return self.decoder(x_quant)
+
+    def forward(self, x: torch.Tensor):
+        x_latent = self.encode(x)
+        x_quant, vq_loss = self.vec_quant(x_latent)
+        return self.decode(x_quant), vq_loss
 
 
 if __name__ == "__main__":

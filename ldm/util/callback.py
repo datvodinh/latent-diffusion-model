@@ -18,7 +18,7 @@ class ModelCallback:
         if not os.path.exists(ckpt_path):
             os.makedirs(ckpt_path)
         ckpt_monitor = "vae_loss_val" if (stage == "stage1") else "unet_loss_val"
-        filename = "vae" if (stage == "stage1") else "unet"
+        filename = "vae" if (stage == "stage1") else "model"
         self.ckpt_callback = ModelCheckpoint(
             monitor=ckpt_monitor,
             dirpath=ckpt_path,

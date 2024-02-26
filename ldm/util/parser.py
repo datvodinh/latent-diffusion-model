@@ -8,7 +8,7 @@ def get_training_parser():
         help='model name'
     )
     parser.add_argument(
-        '--dataset', '-ds', type=str, default='mnist',
+        '--dataset', '-ds', type=str, default='celebahq',
         help='model name'
     )
     parser.add_argument(
