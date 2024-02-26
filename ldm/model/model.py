@@ -45,6 +45,11 @@ class LatentDiffusionModel(pl.LightningModule):
                     config.max_timesteps, config.beta_1, config.beta_2
                 )
             self.criterion = nn.MSELoss()
+            self.sampling_kwargs = {
+                'model': self.model,
+                'in_channels': self.config.latent_dim,
+                'dim': self.config.dim,
+            }
 
             self.epoch_count = 0
 
@@ -54,6 +59,8 @@ class LatentDiffusionModel(pl.LightningModule):
         for k in state_dict.keys():
             if "vae." in k:
                 new_state_dict[k.replace("vae.", "")] = state_dict[k]
+            else:
+                new_state_dict[k] = state_dict[k]
         self.vae.load_state_dict(state_dict=new_state_dict)
         self.vae.requires_grad_(False)
 
