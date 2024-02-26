@@ -161,7 +161,7 @@ class DDIMScheduler(DDPMScheduler):
         ) else torch.ones_like(time_prev, device=model.device)
         alpha_hat_prev = alpha_hat_prev[:, None, None, None]
         sqrt_alpha_hat_prev = torch.sqrt(alpha_hat_prev)
-        posterior_std = torch.sqrt(self.variance)[time][:, None, None, None] * eta
+        posterior_std = torch.sqrt(self.variance).to(model.device)[time][:, None, None, None] * eta
 
         if t > 0:
             noise = torch.randn_like(x_t, device=model.device)
