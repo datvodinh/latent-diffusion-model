@@ -39,13 +39,11 @@ class CelebADataset(Dataset):
             img = self.resize(image=img)['image']
         if self.stage == "train":
             crop_len = int(256 * np.random.uniform(0.7, 1))
-            rand_num = np.random.rand()
-            if rand_num < 1/3:
-                cropper = A.RandomCrop(height=crop_len, width=crop_len)
-                img = cropper(image=img)['image']
-            elif rand_num > 1/3 and rand_num < 2/3:
-                cropper = A.CenterCrop(height=crop_len, width=crop_len)
-                img = cropper(image=img)['image']
+            if np.random.rand() < 0.5:
+                cropper = A.RandomCrop(height=crop_len, width=crop_len, p=0.5)
+            else:
+                cropper = A.CenterCrop(height=crop_len, width=crop_len, p=0.5)
+            img = cropper(image=img)['image']
 
         return self.transform(image=img)['image']
 
