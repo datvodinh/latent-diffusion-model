@@ -15,6 +15,8 @@ class CelebADataset(Dataset):
     def __init__(self, list_path: str, stage: str = "train"):
         self.list_path = list_path
         self.stage = stage
+        self.img_size = 256
+        self.resize = A.Resize(256, 256, interpolation=cv2.INTER_AREA)
         if stage == "train":
             self.transform = A.Compose([
                 A.SmallestMaxSize(max_size=256, interpolation=cv2.INTER_AREA),
@@ -33,6 +35,8 @@ class CelebADataset(Dataset):
     def __getitem__(self, index):
         img = Image.open(self.list_path[index])
         img = np.asarray(img)
+        if img.shape[0] != self.img_size or img.shape[1] != self.img_size:
+            img = self.resize(image=img)['image']
         if self.stage == "train":
             crop_len = int(256 * np.random.uniform(0.7, 1))
             rand_num = np.random.rand()
