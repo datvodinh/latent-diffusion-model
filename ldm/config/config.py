@@ -17,7 +17,7 @@ class LDMConfigStage1:
     lr: float = 1e-4
     weight_decay: float = 0.001
     betas: tuple[float] = (0.5, 0.9)
-    pct_start: float = 0.1
+    pct_start: float = 0.3
 
     # MODEL
     in_channels: int = 3
@@ -33,7 +33,7 @@ class LDMConfigStage2:
     lr: float = 1e-4
     weight_decay: float = 0.001
     betas: tuple[float] = (0.9, 0.999)
-    pct_start: float = 0.1
+    pct_start: float = 0.3
 
     # MODEL
     in_channels: int = 3
@@ -42,8 +42,8 @@ class LDMConfigStage2:
 
     # DIFFUSION
     max_timesteps: int = 1000
-    beta_1: float = 0.0001
-    beta_2: float = 0.02
+    beta_1: float = 0.00095
+    beta_2: float = 0.0195
     mode: str = "ddim"
     sample_per_epochs: int = 5
     time_dim: int = 256
