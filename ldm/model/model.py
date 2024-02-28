@@ -3,9 +3,11 @@ import wandb
 import torch
 import torch.nn as nn
 import pytorch_lightning as pl
+import matplotlib.pyplot as plt
 from collections import OrderedDict
 from torchvision.utils import make_grid
 from torch.optim.lr_scheduler import OneCycleLR
+from IPython.display import clear_output
 
 
 class LatentDiffusionModel(pl.LightningModule):
@@ -83,7 +85,7 @@ class LatentDiffusionModel(pl.LightningModule):
             low=0, high=self.config.max_timesteps, size=(n//2+1,), device=x.device
         )
         t = torch.cat([t, self.config.max_timesteps - t - 1], dim=0)[:n]
-        x_latent = self.vae.encode_quantize(x)
+        x_latent = self.vae.encode_quantize(x).detach()
         x_noise, noise = self.scheduler.noising(x_latent, t)
         noise_pred = self.model(x_noise, t)
         loss = self.criterion(noise, noise_pred)
@@ -132,6 +134,7 @@ class LatentDiffusionModel(pl.LightningModule):
         }
         return [optimizer], [scheduler]
 
+    @torch.no_grad()
     def sampling(
         self,
         labels=None,
@@ -146,6 +149,7 @@ class LatentDiffusionModel(pl.LightningModule):
             self.test_scheduler = ldm.DDIMScheduler(self.config.max_timesteps)
 
         kwargs = {
+            "quantize": self.vae.quantize,
             "n_samples": n_samples,
             "labels": labels,
             "timesteps": timesteps,
@@ -182,8 +186,7 @@ class LatentDiffusionModel(pl.LightningModule):
                         wandblog = self.logger.experiment
                         n = min(self.trainer.val_dataloaders.batch_size, 16)
                         x_t = self.sampling(mode="ddim", n_samples=n, timesteps=100, demo=False)
-                        x_t = self.vae.vec_quant.quantize(x_t)
-                        x_dec = self.vae.decode(x_t)
+                        x_dec = self.vae.quantize_decode(x_t)[0]
                         img_array = [x_dec[i] for i in range(x_dec.shape[0])]
 
                         wandblog.log(
@@ -192,3 +195,32 @@ class LatentDiffusionModel(pl.LightningModule):
                             }
                         )
             self.epoch_count += 1
+
+    @torch.no_grad()
+    def draw(
+        self,
+        labels=None,
+        mode: int = "ddpm",
+        n_samples: int = 1,
+        timesteps: int = 1000,
+    ):
+        demo = self.sampling(
+            labels=labels,
+            mode=mode,
+            n_samples=n_samples,
+            timesteps=timesteps,
+            demo=True
+        )
+        idx = 0
+        length = labels.shape[0] if labels is not None else n_samples
+        for img in demo:
+            img = self.vae.decode(img)
+            for i in range(length):
+                plt.subplot(1, length, i+1)
+                plt.imshow(img[i].permute(1, 2, 0).clamp(0, 1))
+                plt.axis('off')
+            plt.title(f"{idx+1}/{timesteps}")
+            idx += 1
+            plt.show()
+            if idx < timesteps:
+                clear_output(wait=True)

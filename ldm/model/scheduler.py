@@ -45,6 +45,7 @@ class DDPMScheduler:
         t: int,
         n_samples: int = 16,
         cfg_scale: int = 3,
+        *args, **kwargs
     ):
         time = torch.full((n_samples,), fill_value=t, device=model.device)
         pred_noise = model(x_t, time, labels)
@@ -84,7 +85,7 @@ class DDPMScheduler:
         all_timesteps = torch.flip(torch.arange(0, timesteps) * step_ratios, dims=(0,))
         for t in all_timesteps:
             x_t = self.sampling_t(x_t=x_t, model=model, labels=labels, t=t, timesteps=timesteps,
-                                  n_samples=n_samples, cfg_scale=cfg_scale)
+                                  n_samples=n_samples, cfg_scale=cfg_scale, *args, **kwargs)
         return x_t
 
     @torch.no_grad()
@@ -166,7 +167,9 @@ class DDIMScheduler(DDPMScheduler):
             noise = torch.zeros_like(x_t, device=model.device)
 
         x_0_pred = (x_t - sqrt_one_minus_alpha_hat * pred_noise) / sqrt_alpha_hat
-        x_0_pred = x_0_pred.clamp(-1, 1)
+        if "quantize" in kwargs.keys():
+            x_0_pred = kwargs['quantize'](x_0_pred)
+        # x_0_pred = x_0_pred.clamp(-1, 1)
         x_t_direction = torch.sqrt(1. - alpha_hat_prev - posterior_std**2) * pred_noise
         random_noise = posterior_std * noise
         x_t_1 = sqrt_alpha_hat_prev * x_0_pred + x_t_direction + random_noise
