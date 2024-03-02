@@ -1,8 +1,25 @@
+import ldm
 import torch
 import torch.nn as nn
 import pytorch_lightning as pl
 import torch.nn.functional as F
 from einops import rearrange, repeat
+
+
+class VAEAttentionBlock(nn.Module):
+    def __init__(
+        self,
+        channels: int,
+        num_heads: int = 4
+    ):
+        super().__init__()
+        self.attention = nn.Sequential(
+            nn.GroupNorm(32, channels),
+            ldm.SelfAttention(channels=channels, num_heads=num_heads)
+        )
+
+    def forward(self, x: torch.Tensor):
+        return x + self.attention(x)
 
 
 class VectorQuantizer(nn.Module):
@@ -75,12 +92,12 @@ class VAEEncoder(nn.Module):
             nn.Conv2d(128, 128, kernel_size=3, stride=2, padding=1),
             VAEResidualBlock(128, 256),
             nn.Conv2d(256, 256, kernel_size=3, stride=2, padding=1),
-            VAEResidualBlock(256, 512),
-            nn.Conv2d(512, 512, kernel_size=3, stride=2, padding=1),
-            VAEResidualBlock(512, 512),
-            nn.GroupNorm(32, 512),
+            VAEResidualBlock(256, 256),
+            # VAEAttentionBlock(256, 8),
+            VAEResidualBlock(256, 256),
+            nn.GroupNorm(32, 256),
             nn.SiLU(),
-            nn.Conv2d(512, latent_dim, kernel_size=3, padding=1),
+            nn.Conv2d(256, latent_dim, kernel_size=3, padding=1),
         )
 
     def forward(self, x):
@@ -95,11 +112,10 @@ class VAEDecoder(nn.Module):
     ):
         super().__init__()
         self.decoder = nn.Sequential(
-            nn.Conv2d(latent_dim, 512, kernel_size=3, padding=1),
-            VAEResidualBlock(512, 512),
-            nn.Upsample(scale_factor=2),
-            nn.Conv2d(512, 512, kernel_size=3, padding=1),
-            VAEResidualBlock(512, 256),
+            nn.Conv2d(latent_dim, 256, kernel_size=3, padding=1),
+            VAEResidualBlock(256, 256),
+            VAEAttentionBlock(256),
+            VAEResidualBlock(256, 256),
             nn.Upsample(scale_factor=2),
             nn.Conv2d(256, 256, kernel_size=3, padding=1),
             VAEResidualBlock(256, 128),
