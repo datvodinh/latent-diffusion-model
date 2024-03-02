@@ -114,7 +114,7 @@ class VAEDecoder(nn.Module):
         self.decoder = nn.Sequential(
             nn.Conv2d(latent_dim, 256, kernel_size=3, padding=1),
             VAEResidualBlock(256, 256),
-            VAEAttentionBlock(256),
+            # VAEAttentionBlock(256),
             VAEResidualBlock(256, 256),
             nn.Upsample(scale_factor=2),
             nn.Conv2d(256, 256, kernel_size=3, padding=1),
