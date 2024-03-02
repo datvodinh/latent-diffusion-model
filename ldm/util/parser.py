@@ -4,7 +4,7 @@ import argparse
 def get_training_parser():
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        '--data_dir', '-dd', type=str, default='./data/',
+        '--data_dir', '-dd', type=str, default=None,
         help='model name'
     )
     parser.add_argument(
@@ -16,27 +16,27 @@ def get_training_parser():
         help='training state for LDM'
     )
     parser.add_argument(
-        '--vae_ckpt', '-vc', type=str, default='stage2',
+        '--vae_ckpt', '-vc', type=str, default=None,
         help='checkpoint for pretrained VAE model'
     )
     parser.add_argument(
-        '--max_epochs', '-me', type=int, default=200,
+        '--max_epochs', '-me', type=int, default=100,
         help='max epoch'
     )
     parser.add_argument(
-        '--batch_size', '-bs', type=int, default=1,
+        '--batch_size', '-bs', type=int, default=None,
         help='batch size'
     )
     parser.add_argument(
-        '--train_ratio', '-tr', type=float, default=0.95,
+        '--train_ratio', '-tr', type=float, default=None,
         help='batch size'
     )
     parser.add_argument(
-        '--val_ratio', '-vr', type=float, default=0.05,
+        '--val_ratio', '-vr', type=float, default=None,
         help='batch size'
     )
     parser.add_argument(
-        '--timesteps', '-ts', type=int, default=1000,
+        '--timesteps', '-ts', type=int, default=None,
         help='max timesteps diffusion'
     )
     parser.add_argument(
@@ -44,15 +44,15 @@ def get_training_parser():
         help='max batch size'
     )
     parser.add_argument(
-        '--lr', '-l', type=float, default=1e-4,
+        '--lr', '-l', type=float, default=None,
         help='learning rate'
     )
     parser.add_argument(
-        '--num_workers', '-nw', type=int, default=4,
+        '--num_workers', '-nw', type=int, default=None,
         help='number of workers'
     )
     parser.add_argument(
-        '--seed', '-s', type=int, default=42,
+        '--seed', '-s', type=int, default=None,
         help='seed'
     )
     parser.add_argument(
@@ -68,11 +68,11 @@ def get_training_parser():
         help='numerical precision'
     )
     parser.add_argument(
-        '--sample_per_epochs', '-spe', type=int, default=25,
+        '--sample_per_epochs', '-spe', type=int, default=None,
         help='sample every n epochs'
     )
     parser.add_argument(
-        '--n_samples', '-ns', type=int, default=4,
+        '--n_samples', '-ns', type=int, default=None,
         help='number of workers'
     )
     parser.add_argument(

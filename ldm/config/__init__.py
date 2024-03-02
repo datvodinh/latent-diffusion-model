@@ -1,1 +1,2 @@
-from .config import *
+from .model import *
+from .celebahq import *

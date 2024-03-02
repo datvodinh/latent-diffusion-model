@@ -17,13 +17,10 @@ def main():
     pl.seed_everything(args.seed, workers=True)
 
     # DATAMODULE
+    data_config = ldm.get_data_config(args=args)
     datamodule = ldm.get_datamodule(
-        dataset=args.dataset,
-        data_dir=args.data_dir,
-        batch_size=args.batch_size,
-        num_workers=args.num_workers,
-        seed=args.seed,
-        train_ratio=args.train_ratio
+        config=data_config,
+        dataset=args.dataset
     )
 
     # WANDB (OPTIONAL)
@@ -35,9 +32,9 @@ def main():
         logger = None
 
     # MODEL
-    config = ldm.get_config(stage=args.stage)
-    config.in_channels = datamodule.in_channels
-    model = ldm.LatentDiffusionModel(config)
+    model_config = ldm.get_model_config(args)
+    model_config.in_channels = datamodule.in_channels
+    model = ldm.LatentDiffusionModel(model_config)
     if args.stage == "stage2":
         model.load_vae_ckpt(args.vae_ckpt)
 
@@ -57,12 +54,12 @@ def main():
         logger=logger,
         callbacks=callback.get_callback(),
         strategy=strategy,
-        gradient_clip_val=0.5,
-        max_epochs=args.max_epochs,
+        gradient_clip_val=1.0,
+        max_epochs=data_config.max_epochs,
         enable_progress_bar=args.pbar,
         deterministic=False,
         precision=args.precision,
-        accumulate_grad_batches=max(int(args.max_batch_size / args.batch_size), 1)
+        accumulate_grad_batches=max(int(data_config.max_batch_size / data_config.batch_size), 1)
     )
 
     # FIT MODEL

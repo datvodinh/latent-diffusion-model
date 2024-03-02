@@ -2,21 +2,35 @@ from argparse import Namespace
 from dataclasses import dataclass
 
 
-def get_config(stage: str, args: Namespace = None):
-    if stage == "stage1":
-        return LDMConfigStage1
-    else:
-        return LDMConfigStage2
+def get_model_config(args: Namespace = None):
+    config = LDMConfigStage1() if args.stage == "stage1" else LDMConfigStage2()
+    config.update(args)
+    print(config)
+    return config
 
 
 @dataclass
-class LDMConfigStage1:
+class BaseLDMConfig:
+    def update(
+        self,
+        args: Namespace
+    ):
+        if isinstance(args, dict):
+            args = Namespace(**args)
+        for k, v in args.__dict__.items():
+            if hasattr(self, k) and v is not None and k != "stage":
+                setattr(self, k, v)
+        print("LDM Config Updated!")
+
+
+@dataclass
+class LDMConfigStage1(BaseLDMConfig):
     stage: float = "stage1"
 
     # LR
     lr: float = 1e-4
     weight_decay: float = 0.001
-    betas: tuple[float] = (0.5, 0.9)
+    betas: tuple[float] = (0.9, 0.98)
     pct_start: float = 0.3
 
     # MODEL
@@ -26,20 +40,17 @@ class LDMConfigStage1:
 
 
 @dataclass
-class LDMConfigStage2:
+class LDMConfigStage2(BaseLDMConfig):
     stage: float = "stage2"
-
     # LR
     lr: float = 1e-4
     weight_decay: float = 0.001
-    betas: tuple[float] = (0.9, 0.999)
+    betas: tuple[float] = (0.9, 0.98)
     pct_start: float = 0.3
-
     # MODEL
     in_channels: int = 3
     latent_dim: int = 8
     num_embeds: int = 1024
-
     # DIFFUSION
     max_timesteps: int = 1000
     beta_1: float = 0.00095
