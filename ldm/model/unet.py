@@ -172,11 +172,11 @@ class UNet(pl.LightningModule):
         self.down3 = DownSample(in_channels=256, out_channels=256)
         self.attn3 = UNetAttentionBlock(context_dim=context_dim, channels=256, num_heads=8)
 
-        self.mid1 = UNetResidualBlock(in_channels=256, out_channels=512)
-        self.attn4 = UNetAttentionBlock(context_dim=context_dim, channels=512, num_heads=8)
-        self.mid2 = UNetResidualBlock(in_channels=512, out_channels=512)
+        self.mid1 = UNetResidualBlock(in_channels=256, out_channels=256)
+        self.attn4 = UNetAttentionBlock(context_dim=context_dim, channels=256, num_heads=8)
+        self.mid2 = UNetResidualBlock(in_channels=256, out_channels=256)
 
-        self.up1 = UpSample(in_channels=512, out_channels=256)
+        self.up1 = UpSample(in_channels=256, out_channels=256)
         self.attn5 = UNetAttentionBlock(context_dim=context_dim, channels=256, num_heads=8)
         self.up2 = UpSample(in_channels=256, out_channels=128)
         self.attn6 = UNetAttentionBlock(context_dim=context_dim, channels=128, num_heads=8)
