@@ -83,7 +83,7 @@ class VAEEncoder(nn.Module):
     def __init__(
         self,
         in_channels: int = 3,
-        latent_dim: int = 8
+        latent_channels: int = 8
     ):
         super().__init__()
         self.encoder = nn.Sequential(
@@ -97,7 +97,7 @@ class VAEEncoder(nn.Module):
             VAEResidualBlock(256, 256),
             nn.GroupNorm(32, 256),
             nn.SiLU(),
-            nn.Conv2d(256, latent_dim, kernel_size=3, padding=1),
+            nn.Conv2d(256, latent_channels, kernel_size=3, padding=1),
         )
 
     def forward(self, x):
@@ -108,11 +108,11 @@ class VAEDecoder(nn.Module):
     def __init__(
         self,
         out_channels: int = 3,
-        latent_dim: int = 8
+        latent_channels: int = 8
     ):
         super().__init__()
         self.decoder = nn.Sequential(
-            nn.Conv2d(latent_dim, 256, kernel_size=3, padding=1),
+            nn.Conv2d(latent_channels, 256, kernel_size=3, padding=1),
             VAEResidualBlock(256, 256),
             # VAEAttentionBlock(256),
             VAEResidualBlock(256, 256),
@@ -134,15 +134,15 @@ class VAEDecoder(nn.Module):
 class VariationalAutoEncoder(pl.LightningModule):
     def __init__(self,
                  in_channels: int = 3,
-                 latent_dim: int = 8,
+                 latent_channels: int = 8,
                  num_embeds: int = 256,
                  ):
         super().__init__()
-        self.encoder = VAEEncoder(in_channels, latent_dim)
-        self.quant_conv_in = nn.Conv2d(latent_dim, latent_dim, 1)
-        self.vec_quant = VectorQuantizer(num_embeds=num_embeds, embed_dim=latent_dim)
-        self.quant_conv_out = nn.Conv2d(latent_dim, latent_dim, 1)
-        self.decoder = VAEDecoder(in_channels, latent_dim)
+        self.encoder = VAEEncoder(in_channels, latent_channels)
+        self.quant_conv_in = nn.Conv2d(latent_channels, latent_channels, 1)
+        self.vec_quant = VectorQuantizer(num_embeds=num_embeds, embed_dim=latent_channels)
+        self.quant_conv_out = nn.Conv2d(latent_channels, latent_channels, 1)
+        self.decoder = VAEDecoder(in_channels, latent_channels)
 
     def encode(self, x: torch.Tensor):
         x_latent = self.encoder(x)

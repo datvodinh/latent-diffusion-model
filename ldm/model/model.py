@@ -21,7 +21,7 @@ class LatentDiffusionModel(pl.LightningModule):
         if config.stage == "stage1":
             self.vae = ldm.VariationalAutoEncoder(
                 in_channels=config.in_channels,
-                latent_dim=config.latent_dim,
+                latent_channels=config.latent_channels,
                 num_embeds=config.num_embeds
             )
             self.criterion = nn.MSELoss()
@@ -29,12 +29,12 @@ class LatentDiffusionModel(pl.LightningModule):
         elif config.stage == "stage2":
             self.vae = ldm.VariationalAutoEncoder(
                 in_channels=config.in_channels,
-                latent_dim=config.latent_dim,
+                latent_channels=config.latent_channels,
                 num_embeds=config.num_embeds
             )
             self.model = ldm.UNet(
-                in_channels=config.latent_dim,
-                out_channels=config.latent_dim,
+                in_channels=config.latent_channels,
+                out_channels=config.latent_channels,
                 time_dim=config.time_dim,
                 context_dim=config.context_dim
             )
@@ -49,7 +49,7 @@ class LatentDiffusionModel(pl.LightningModule):
             self.criterion = nn.MSELoss()
             self.sampling_kwargs = {
                 'model': self.model,
-                'in_channels': self.config.latent_dim,
+                'in_channels': self.config.latent_channels,
                 'dim': self.config.dim,
             }
 
@@ -65,6 +65,7 @@ class LatentDiffusionModel(pl.LightningModule):
                 new_state_dict[k] = state_dict[k]
         self.vae.load_state_dict(state_dict=new_state_dict)
         self.vae.requires_grad_(False)
+        print("VAE Checkpoint Loaded!")
 
     def _step_stage_1(self, batch):
         if isinstance(batch, (tuple, list)):

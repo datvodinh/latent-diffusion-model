@@ -35,7 +35,7 @@ class LDMConfigStage1(BaseLDMConfig):
 
     # MODEL
     in_channels: int = 3
-    latent_dim: int = 8
+    latent_channels: int = 8
     num_embeds: int = 1024
 
 
@@ -48,15 +48,15 @@ class LDMConfigStage2(BaseLDMConfig):
     betas: tuple[float] = (0.9, 0.98)
     pct_start: float = 0.3
     # MODEL
-    in_channels: int = 8
-    latent_dim: int = 8
+    in_channels: int = 3
+    latent_channels: int = 8
     num_embeds: int = 1024
+    time_dim: int = 256
+    latent_dim: int = 64
+    context_dim: int | None = None
     # DIFFUSION
     max_timesteps: int = 1000
     beta_1: float = 0.00095
     beta_2: float = 0.0195
     mode: str = "ddim"
     sample_per_epochs: int = 5
-    time_dim: int = 256
-    dim: int = 64
-    context_dim: int | None = None
