@@ -58,5 +58,5 @@ class LDMConfigStage2(BaseLDMConfig):
     mode: str = "ddim"
     sample_per_epochs: int = 5
     time_dim: int = 256
-    dim: int = 32
+    dim: int = 64
     context_dim: int | None = None

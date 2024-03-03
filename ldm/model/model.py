@@ -212,12 +212,15 @@ class LatentDiffusionModel(pl.LightningModule):
             demo=True
         )
         idx = 0
+        self.model.eval()
         length = labels.shape[0] if labels is not None else n_samples
         for img in demo:
-            img = self.vae.decode(img)
+            img = self.vae.quantize_decode(img)[0]
+            # img_scale = (img - img.min()) / (img.max()-img.min())
+            img_scale = img.clamp(0, 1)
             for i in range(length):
                 plt.subplot(1, length, i+1)
-                plt.imshow(img[i].permute(1, 2, 0).clamp(0, 1))
+                plt.imshow(img_scale[i].permute(1, 2, 0))
                 plt.axis('off')
             plt.title(f"{idx+1}/{timesteps}")
             idx += 1
