@@ -50,7 +50,7 @@ class LatentDiffusionModel(pl.LightningModule):
             self.sampling_kwargs = {
                 'model': self.model,
                 'in_channels': self.config.latent_channels,
-                'dim': self.config.dim,
+                'dim': self.config.latent_dim,
             }
 
             self.epoch_count = 0
