@@ -174,9 +174,9 @@ class UNet(pl.LightningModule):
 
         self.mid1 = UNetResidualBlock(in_channels=256, out_channels=256)
         self.attn4 = UNetAttentionBlock(context_dim=context_dim, channels=256, num_heads=8)
-        self.mid2 = UNetResidualBlock(in_channels=256, out_channels=256)
+        self.mid2 = UNetResidualBlock(in_channels=256, out_channels=512)
 
-        self.up1 = UpSample(in_channels=256, out_channels=256)
+        self.up1 = UpSample(in_channels=512, out_channels=256)
         self.attn5 = UNetAttentionBlock(context_dim=context_dim, channels=256, num_heads=8)
         self.up2 = UpSample(in_channels=256, out_channels=128)
         self.attn6 = UNetAttentionBlock(context_dim=context_dim, channels=128, num_heads=8)
@@ -239,9 +239,9 @@ class UNet(pl.LightningModule):
 
 
 if __name__ == '__main__':
-    net = UNet()
+    net = UNet(in_channels=8, out_channels=8)
     print(sum([p.numel() for p in net.parameters()]))
-    x = torch.randn(2, 4, 32, 32)
+    x = torch.randn(2, 8, 64, 64)
     t = x.new_tensor([500] * x.shape[0]).long()
     print(t)
     print(net(x, t).shape)

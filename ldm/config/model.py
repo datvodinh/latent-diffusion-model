@@ -48,7 +48,7 @@ class LDMConfigStage2(BaseLDMConfig):
     betas: tuple[float] = (0.9, 0.98)
     pct_start: float = 0.3
     # MODEL
-    in_channels: int = 3
+    in_channels: int = 8
     latent_dim: int = 8
     num_embeds: int = 1024
     # DIFFUSION
