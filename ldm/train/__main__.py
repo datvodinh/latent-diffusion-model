@@ -32,19 +32,21 @@ def main():
         logger = None
 
     # MODEL
-    model_config = ldm.get_model_config(args)
-    model_config.in_channels = datamodule.in_channels
-    model = ldm.LatentDiffusionModel(model_config)
-    if args.stage == "stage2":
-        model.load_vae_ckpt(args.vae_ckpt)
-
+    if args.model_ckpt is None:
+        model_config = ldm.get_model_config(args)
+        model_config.in_channels = datamodule.in_channels
+        model = ldm.LatentDiffusionModel(model_config)
+        if args.stage == "stage2":
+            model.load_vae_ckpt(args.vae_ckpt)
+    else:
+        model = ldm.LatentDiffusionModel.load_from_checkpoint(args.model_ckpt)
+        print("Model Checkpoint Loaded!")
     # CALLBACK
     root_path = os.path.join(os.getcwd(), "checkpoints")
     callback = ldm.ModelCallback(
         root_path=root_path,
         stage=args.stage
     )
-
     # STRATEGY
     strategy = 'ddp_find_unused_parameters_true' if torch.cuda.is_available() else 'auto'
 

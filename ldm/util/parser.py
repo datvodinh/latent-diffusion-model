@@ -20,6 +20,10 @@ def get_training_parser():
         help='checkpoint for pretrained VAE model'
     )
     parser.add_argument(
+        '--model_ckpt', '-mc', type=str, default=None,
+        help='checkpoint for model for continue training'
+    )
+    parser.add_argument(
         '--max_epochs', '-me', type=int, default=100,
         help='max epoch'
     )
