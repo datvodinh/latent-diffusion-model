@@ -38,14 +38,11 @@ class LatentDiffusionModel(pl.LightningModule):
                 time_dim=config.time_dim,
                 context_dim=config.context_dim
             )
-            if config.mode == "ddpm":
-                self.scheduler = ldm.DDPMScheduler(
-                    config.max_timesteps, config.beta_1, config.beta_2
-                )
-            elif config.mode == "ddim":
-                self.scheduler = ldm.DDIMScheduler(
-                    config.max_timesteps, config.beta_1, config.beta_2
-                )
+            self.scheduler = ldm.Scheduler(
+                max_timesteps=config.max_timesteps,
+                beta_1=config.beta_1,
+                beta_2=config.beta_2
+            )
             self.criterion = nn.MSELoss()
             self.sampling_kwargs = {
                 'model': self.model,
@@ -109,12 +106,6 @@ class LatentDiffusionModel(pl.LightningModule):
             loss = self._step_stage_2(batch)
             self.log_dict({"unet_loss_val": loss}, sync_dist=True, on_epoch=True)
 
-    def _wandb_image(self, x: torch.Tensor, caption: str):
-        return wandb.Image(
-            make_grid(x, nrow=4, normalize=True).permute(1, 2, 0).cpu().numpy(),
-            caption=caption
-        )
-
     def configure_optimizers(self):
         optimizer = torch.optim.AdamW(
             params=self.parameters(),
@@ -135,30 +126,11 @@ class LatentDiffusionModel(pl.LightningModule):
         }
         return [optimizer], [scheduler]
 
-    @torch.no_grad()
-    def sampling(
-        self,
-        labels=None,
-        mode: int = "ddpm",
-        demo: bool = True,
-        n_samples: int = 16,
-        timesteps: int = 1000,
-    ):
-        if mode == "ddpm":
-            self.test_scheduler = ldm.DDPMScheduler(self.config.max_timesteps)
-        elif mode == "ddim":
-            self.test_scheduler = ldm.DDIMScheduler(self.config.max_timesteps)
-
-        kwargs = {
-            "quantize": self.vae.quantize,
-            "n_samples": n_samples,
-            "labels": labels,
-            "timesteps": timesteps,
-        } | self.sampling_kwargs
-        if demo:
-            return self.test_scheduler.sampling_demo(**kwargs)
-        else:
-            return self.test_scheduler.sampling(**kwargs)
+    def _wandb_image(self, x: torch.Tensor, caption: str):
+        return wandb.Image(
+            make_grid(x, nrow=4, normalize=True).permute(1, 2, 0).cpu().numpy(),
+            caption=caption
+        )
 
     def on_train_epoch_end(self) -> None:
         if self.config.stage == "stage1":
@@ -170,13 +142,19 @@ class LatentDiffusionModel(pl.LightningModule):
                     x_org = batch[0][:n].to(self.vae.device)
                 else:
                     x_org = batch[:n].to(self.vae.device)
-                x_res, _ = self.vae(x_org)
+                x_latent = self.vae.encode(x_org)
+                x_quant = self.vae.quantize(x_latent)
+                x_dec = self.vae.decode(x_quant)
                 org_array = [x_org[i] for i in range(x_org.shape[0])]
-                res_array = [x_res[i] for i in range(x_res.shape[0])]
+                lat_array = [x_latent[i] for i in range(x_latent.shape[0])]
+                q_array = [x_quant[i] for i in range(x_quant.shape[0])]
+                res_array = [x_dec[i] for i in range(x_dec.shape[0])]
 
                 wandblog.log(
                     {
                         "original": self._wandb_image(org_array, caption="Original Image!"),
+                        "latent space": self._wandb_image(lat_array, caption="Latent Image!"),
+                        "quantize space": self._wandb_image(q_array, caption="Quantized Image!"),
                         "reconstructed": self._wandb_image(res_array, caption="Sampled Image!")
                     }
                 )
@@ -198,31 +176,53 @@ class LatentDiffusionModel(pl.LightningModule):
             self.epoch_count += 1
 
     @torch.no_grad()
+    def sampling(
+        self,
+        labels=None,
+        mode: int = "ddpm",
+        demo: bool = True,
+        n_samples: int = 16,
+        timesteps: int = 1000,
+        **kwarg
+    ):
+        kwargs = {
+            "quantize": self.vae.quantize,
+            "n_samples": n_samples,
+            "labels": labels,
+            "timesteps": timesteps,
+        } | self.sampling_kwargs | kwarg
+        if demo:
+            return self.scheduler.sampling_demo(**kwargs)
+        else:
+            return self.scheduler.sampling(**kwargs)
+
+    @torch.no_grad()
     def draw(
         self,
         labels=None,
         mode: int = "ddpm",
         n_samples: int = 1,
         timesteps: int = 1000,
+        print_every: int = 1,
+        **kwargs
     ):
+        length = labels.shape[0] if labels is not None else n_samples
         demo = self.sampling(
             labels=labels,
             mode=mode,
-            n_samples=n_samples,
+            n_samples=length,
             timesteps=timesteps,
-            demo=True
+            demo=True,
+            **kwargs
         )
         idx = 0
-        self.model.eval()
-        length = labels.shape[0] if labels is not None else n_samples
+        self.eval()
         for img in demo:
-            img = self.vae.quantize_decode(img)[0]
-            # img_scale = (img - img.min()) / (img.max()-img.min())
-            img_scale = img.clamp(0, 1)
-            for i in range(length):
-                plt.subplot(1, length, i+1)
-                plt.imshow(img_scale[i].permute(1, 2, 0))
-                plt.axis('off')
+            if idx % print_every == 0 or idx == timesteps-1:
+                img = self.vae.quantize_decode(img)[0]
+                img_old = img.clamp(0, 1)
+            plt.imshow(make_grid(img_old, nrow=4, normalize=False).permute(1, 2, 0).cpu().numpy())
+            plt.axis('off')
             plt.title(f"{idx+1}/{timesteps}")
             idx += 1
             plt.show()
