@@ -35,7 +35,7 @@ class LDMConfigStage1(BaseLDMConfig):
 
     # MODEL
     in_channels: int = 3
-    latent_channels: int = 8
+    latent_channels: int = 3
     num_embeds: int = 1024
 
 
@@ -49,7 +49,7 @@ class LDMConfigStage2(BaseLDMConfig):
     pct_start: float = 0.3
     # MODEL
     in_channels: int = 3
-    latent_channels: int = 8
+    latent_channels: int = 3
     num_embeds: int = 1024
     time_dim: int = 256
     latent_dim: int = 64
