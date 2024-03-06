@@ -128,7 +128,7 @@ class LatentDiffusionModel(pl.LightningModule):
 
     def _wandb_image(self, x: torch.Tensor, caption: str):
         return wandb.Image(
-            make_grid(x, nrow=4, normalize=True).permute(1, 2, 0).cpu().numpy(),
+            make_grid(x, nrow=4, normalize=True, scale_each=True).permute(1, 2, 0).cpu().numpy(),
             caption=caption
         )
 
@@ -166,10 +166,12 @@ class LatentDiffusionModel(pl.LightningModule):
                         n = min(self.trainer.val_dataloaders.batch_size, 16)
                         x_t = self.sampling(mode="ddim", n_samples=n, timesteps=100, demo=False)
                         x_dec = self.vae.quantize_decode(x_t)[0]
+                        quant_array = [x_t[i] for i in range(x_t.shape[0])]
                         img_array = [x_dec[i] for i in range(x_dec.shape[0])]
 
                         wandblog.log(
                             {
+                                "quantize space": self._wandb_image(quant_array, caption="Sampled Latent Image!"),
                                 "sample": self._wandb_image(img_array, caption="Sampled Image!")
                             }
                         )
