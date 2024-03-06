@@ -23,18 +23,6 @@ class DDPMScheduler:
         self.sqrt_one_minus_alpha = torch.sqrt(1 - self.alpha)
         self.sqrt_one_minus_alpha_hat = torch.sqrt(1 - self.alpha_hat)
 
-    def noising(
-        self,
-        x_0: torch.Tensor,
-        t: torch.Tensor
-    ):
-        if t.device != x_0.device:
-            t = t.to(x_0.device)
-        noise = torch.randn_like(x_0, device=x_0.device)
-        new_x = self.sqrt_alpha_hat.to(x_0.device)[t][:, None, None, None] * x_0
-        new_noise = self.sqrt_one_minus_alpha_hat.to(x_0.device)[t][:, None, None, None] * noise
-        return new_x + new_noise, noise
-
     @torch.no_grad()
     def sampling_t(
         self,
@@ -252,6 +240,18 @@ class Scheduler:
         self.ddpm = DDPMScheduler(max_timesteps, beta_1, beta_2)
         self.ddim = DDIMScheduler(max_timesteps, beta_1, beta_2)
         self.plms = PLMSScheduler(max_timesteps, beta_1, beta_2)
+
+    def noising(
+        self,
+        x_0: torch.Tensor,
+        t: torch.Tensor
+    ):
+        if t.device != x_0.device:
+            t = t.to(x_0.device)
+        noise = torch.randn_like(x_0, device=x_0.device)
+        new_x = self.ddpm.sqrt_alpha_hat.to(x_0.device)[t][:, None, None, None] * x_0
+        new_noise = self.ddpm.sqrt_one_minus_alpha_hat.to(x_0.device)[t][:, None, None, None] * noise
+        return new_x + new_noise, noise
 
     def sampling(
         self,
